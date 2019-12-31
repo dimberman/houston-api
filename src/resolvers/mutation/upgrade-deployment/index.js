@@ -1,5 +1,6 @@
 import fragment from "./fragment";
 import { generateHelmValues } from "deployments/config";
+import { generateNamespace } from "deployments/naming";
 import { addFragmentToInfo } from "graphql-binding";
 import { DEPLOYMENT_AIRFLOW } from "constants";
 
@@ -31,6 +32,7 @@ export default async function upgradeDeployment(parent, args, ctx, info) {
       name: DEPLOYMENT_AIRFLOW,
       version: updatedDeployment.version
     },
+    namespace: generateNamespace(updatedDeployment.releaseName),
     rawConfig: JSON.stringify(generateHelmValues(updatedDeployment))
   });
 

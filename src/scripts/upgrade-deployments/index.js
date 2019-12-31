@@ -5,6 +5,7 @@
 import "dotenv/config";
 import log from "logger";
 import { prisma } from "generated/client";
+import { generateNamespace } from "deployments/naming";
 import commander from "commander";
 import { generateHelmValues } from "deployments/config";
 import config from "config";
@@ -74,6 +75,7 @@ async function upgradeDeployments() {
         name: DEPLOYMENT_AIRFLOW,
         version: desiredVersion
       },
+      namespace: generateNamespace(releaseName),
       rawConfig: JSON.stringify(generateHelmValues(updatedDeployment))
     });
   }

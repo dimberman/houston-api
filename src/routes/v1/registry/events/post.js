@@ -1,6 +1,7 @@
 import { generateHelmValues } from "deployments/config";
 import { prisma } from "generated/client";
 import { createDockerJWT } from "registry/jwt";
+import { generateNamespace } from "deployments/naming";
 import isValidTaggedDeployment from "deployments/validate/docker-tag";
 import log from "logger";
 import commander from "commander";
@@ -90,6 +91,7 @@ export default async function(req, res) {
           name: DEPLOYMENT_AIRFLOW,
           version: updatedDeployment.version
         },
+        namespace: generateNamespace(releaseName),
         rawConfig: JSON.stringify(generateHelmValues(updatedDeployment))
       });
     })
