@@ -10,18 +10,24 @@ jobs:
     steps:
       - clair-scan:
           image_name: ap-houston-api
-  publish-dev:
-    executor: docker-executor
-    steps:
-      - push:
-          comma_separated_tags: "dev,edge,$CIRCLE_SHA1"
-          image_name: ap-houston-api
-  publish-prod:
+  publish-master:
     executor: docker-executor
     steps:
       - push:
           comma_separated_tags: "master,latest"
           image_name: ap-houston-api
+  release:
+    executor: docker-executor
+    steps:
+      - checkout
+      - get-next-tag:
+          image_name: ap-houston-api
+      - push:
+          comma_separated_tags: "$NEXT_TAG,$CIRCLE_BRANCH"
+          image_name: ap-houston-api
+      # Publish a GitHub release on this repository,
+      # automatically generating a change log.
+      - publish-github-release
 workflows:
   version: 2.1
   build-images:
@@ -30,23 +36,34 @@ workflows:
       - scan:
           requires:
             - build
-      - publish-dev:
-          requires:
-            - scan
-      - publish-prod:
+      - publish-master:
           requires:
             - scan
           filters:
             branches:
               only: master
+      - approve-release:
+          type: approval
+          requires:
+            - scan
+          filters:
+            branches:
+              only: '/release-.*/'
+      - release:
+          requires:
+            - approve-release
+          filters:
+            branches:
+              only: '/release-.*/'
 orbs:
   clair-scanner: ovotech/clair-scanner@1.6.0
 executors:
   docker-executor:
     environment:
-      GIT_ORG: astronomerinc
+      GIT_ORG: astronomer
+      DOCKER_REPO: astronomerinc
     docker:
-      - image: circleci/buildpack-deps:stretch
+      - image: circleci/python:3
 commands:
   docker-build:
     description: "Build a Docker image"
@@ -62,7 +79,8 @@ commands:
         default: $CIRCLE_PROJECT_REPONAME
     steps:
       - checkout
-      - setup_remote_docker
+      - setup_remote_docker:
+          docker_layer_caching: true
       - run:
           name: Build the Docker image
           command: |
@@ -94,9 +112,9 @@ commands:
       comma_separated_tags:
         type: string
         default: latest
-      organization:
+      docker_repository:
         type: string
-        default: $GIT_ORG
+        default: $DOCKER_REPO
       image_name:
         type: string
         default: $CIRCLE_PROJECT_REPONAME
@@ -117,7 +135,143 @@ commands:
             for tag in $(echo "<< parameters.comma_separated_tags >>" | sed "s/,/ /g");
             do
               set -x
-              docker tag << parameters.image_name >> << parameters.organization >>/<< parameters.image_name >>:${tag}
-              docker push << parameters.organization >>/<< parameters.image_name >>:${tag}
+              # If the tag looks starts with "v" then a digit, remove the "v"
+              pattern="^(v[0-9].*)"
+              if [[ $tag =~ $pattern ]]; then
+                tag="${tag:1}"
+              fi
+              docker tag << parameters.image_name >> << parameters.docker_repository >>/<< parameters.image_name >>:${tag}
+              docker push << parameters.docker_repository >>/<< parameters.image_name >>:${tag}
               set +x
             done
+  publish-github-release:
+    description: "Create a release on GitHub"
+    parameters:
+      tag:
+        type: string
+        default:  "$NEXT_TAG"
+      ghr_version:
+        type: string
+        default:  "0.13.0"
+    steps:
+      - run:
+          name: Create a release on GitHub
+          command: |
+            set -xe
+            # Install ghr, a CLI tool for doing GitHub releases
+            WORK_DIR=$(pwd)
+            cd /tmp
+            wget https://github.com/tcnksm/ghr/releases/download/v<< parameters.ghr_version >>/ghr_v<< parameters.ghr_version >>_linux_amd64.tar.gz
+            tar -xvf ./ghr_v<< parameters.ghr_version >>_linux_amd64.tar.gz
+            mkdir -p /tmp/bin
+            mv ghr_v<< parameters.ghr_version >>_linux_amd64/ghr /tmp/bin/
+            export PATH=/tmp/bin:$PATH
+            cd $WORK_DIR
+
+            # Generate release notes in Markdown format
+            COMMITS=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"* %ai %h: %s" | awk '{$4=""; print $0}')
+            AUTHORS=$(git log $(git describe --tags --abbrev=0)..HEAD --pretty=format:"%aE" | awk '!a[$0]++')
+            cat \<<EOT > /tmp/release_notes.md
+
+            ## Changes:
+
+            $COMMITS
+
+            ## Authors:
+
+            $AUTHORS
+            EOT
+
+            echo "==================="
+            cat /tmp/release_notes.md
+            echo "==================="
+
+            ghr \
+              -t $GITHUB_TOKEN \
+              -c $CIRCLE_SHA1 \
+              -n v<< parameters.tag>> \
+              -b "$(cat /tmp/release_notes.md)" \
+              v<< parameters.tag>>
+  get-next-tag:
+    description: "Set an environment variable to this release branch with an incremented patch version"
+    parameters:
+      docker_repository:
+        type: string
+        default: $DOCKER_REPO
+      image_name:
+        type: string
+        default: $CIRCLE_PROJECT_REPONAME
+    steps:
+      - run:
+          name: Determine the next patch version
+          command: |
+            set -e
+            pip install --user packaging requests
+            cat > /tmp/next_patch_version.py \<<- EOM
+            import os
+            import re
+            import sys
+            import json
+            import requests
+            from packaging.version import parse as semver
+
+            branch = os.environ['CIRCLE_BRANCH']
+            release_regex = re.compile("release-(\d*\.\d*)")
+
+            major_minor_version = release_regex.findall(branch)
+            most_recent_tag = None
+
+            if not len(major_minor_version):
+                print(f"Error: we are not on a release branch, should not call get-next-tag. This is used to find the next patch version", file=sys.stderr)
+                exit(1)
+
+            major_minor_version = major_minor_version[0]
+            print(f"We are on a release branch: {branch}, detected major.minor version {major_minor_version}", file=sys.stderr)
+            print(f"We will find the most recent patch version of {major_minor_version} and return it incremented by one", file=sys.stderr)
+
+            # Find all tags, paginating
+            repository = "<< parameters.docker_repository >>"
+            image = "<< parameters.image_name >>"
+            i = 1
+            tags = []
+            while True:
+              url = f"https://registry.hub.docker.com/v2/repositories/{repository}/{image}/tags/?page_size=100&page={i}"
+              response = requests.get(url)
+              content = json.loads(response.content)
+              names = [tag['name'] for tag in content['results']]
+              tags += names
+              if not len(names):
+                  break
+              i += 1
+
+            for tag in tags:
+                version = semver(tag).release
+                # skip any tags not parsed as a semantic version
+                if not version:
+                  continue
+                this_major_minor = f"{version[0]}.{version[1]}"
+                if this_major_minor == major_minor_version:
+                    most_recent_tag = tag
+                    print(f"The most recent tag matching this release is {most_recent_tag}", file=sys.stderr)
+                    break
+
+            if most_recent_tag:
+                base_version = semver(most_recent_tag).base_version
+                print(f"Parsed base version as {base_version}", file=sys.stderr)
+                base_version = semver(base_version)
+                major, minor, patch = base_version.release
+                patch += 1
+                new_version = ".".join(str(i) for i in [major, minor, patch])
+            else:
+                print("Did not detect a most recent version. Setting patch number to zero.", file=sys.stderr)
+                new_version = major_minor_version + ".0"
+
+            new_tag_regex = re.compile('\d*\.\d*\.\d*')
+            assert len(new_tag_regex.findall(new_version)), \
+                f"Error, did not produce a new tag in the form {new_tag_regex.pattern}"
+            print(f"Calculated new version as {new_version}", file=sys.stderr)
+            sys.stdout.write(new_version)
+            EOM
+            NEXT_TAG=$(python /tmp/next_patch_version.py)
+            # Make this environment variable available to following steps
+            echo "export NEXT_TAG=${NEXT_TAG}" >> $BASH_ENV
