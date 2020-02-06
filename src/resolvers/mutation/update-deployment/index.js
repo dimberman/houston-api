@@ -56,8 +56,6 @@ export default async function updateDeployment(parent, args, ctx, info) {
     properties: get(args, "payload.properties", {})
   });
 
-  console.log(mungedArgs);
-
   // Validate our args.
   await validate(deployment.workspace.id, mungedArgs, deployment);
 
