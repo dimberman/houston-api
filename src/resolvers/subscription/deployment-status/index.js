@@ -49,7 +49,11 @@ export async function subscribe(parent, args, { pubsub }) {
   // Return promQL data if in production
   return createPoller(async publish => {
     const res = await Promise.resolve(getMetric(releaseName));
-    publish({ deploymentStatus: { result: res.result[0].value[1] } });
+    publish({
+      deploymentStatus: {
+        result: res && res.result ? res.result[0].value[1] : 0
+      }
+    });
   }, pubsub);
 }
 
