@@ -44,10 +44,13 @@ export default async function(req, res) {
   const authorization = req.get("authorization");
 
   if (!authorization) {
-    return res
-      .status(401)
-      .set("WWW-Authenticate", "Bearer")
-      .end();
+    return sendError(
+      res,
+      REGISTRY_CODES.UNAUTHORIZED,
+      "No authorization credentials specified",
+      401,
+      { "WWW-Authenticate": "Bearer" }
+    );
   }
 
   if (!authorization || authorization.substr(0, 5) !== "Basic") {
