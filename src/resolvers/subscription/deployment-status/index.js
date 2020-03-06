@@ -51,7 +51,9 @@ export async function subscribe(parent, args, { pubsub }) {
     const res = await Promise.resolve(getMetric(releaseName));
     publish({
       deploymentStatus: {
-        result: res && res.result && res.result.length ? res.result[0].value[1] : 0
+        result: res &&
+                res.result &&
+                res.result.length ? res.result[0].value[1] : 0
       }
     });
   }, pubsub);
