@@ -1,3 +1,4 @@
+import { prisma } from "generated/client";
 import config from "config";
 const Analytics = require("analytics-node");
 
@@ -17,6 +18,8 @@ export function identify(userId, traits) {
 
 export function track(userId, event, properties) {
   if (client) {
+    const email = usersQuery(userId);
+    properties.email = email;
     client.track({ userId, event, properties });
   }
 }
@@ -25,4 +28,9 @@ export function group(userId, groupId, traits) {
   if (client) {
     client.group({ userId, groupId, traits });
   }
+}
+
+export async function usersQuery(id) {
+  const email = await prisma.user({ id }).email;
+  return email;
 }
