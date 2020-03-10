@@ -7,10 +7,10 @@ import directives from "directives";
 import { formatError } from "errors";
 import commander from "commander";
 import { authenticateRequest, wsOnConnect } from "authentication";
+import { PrismaClient } from "@prisma/client";
 import config from "config";
 import express from "express";
 import { ApolloServer } from "apollo-server-express";
-import { Prisma } from "prisma-binding";
 import { importSchema } from "graphql-import";
 import cookieParser from "cookie-parser";
 import morgan from "morgan";
@@ -60,8 +60,7 @@ const server = new ApolloServer({
   context: ctx => {
     const context = {
       ...ctx,
-      db: new Prisma({
-        typeDefs: "src/lib/generated/schema/prisma.graphql",
+      db: new PrismaClient({
         endpoint: prismaConfig.endpoint,
         secret: prismaConfig.secret,
         debug: prismaConfig.debug

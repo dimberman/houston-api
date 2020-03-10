@@ -3,27 +3,26 @@
   "version": "1.0.0",
   "description": "GraphQL API for the Astronomer Platform",
   "scripts": {
-    "build": "prisma generate && babel src -d dist --copy-files",
-    "start": "prisma generate && npm run migrate && nodemon --exec babel-node -e js,graphql src/index.js",
+    "build": "npx prisma2 generate && babel src -d dist --copy-files",
+    "start": "npx prisma2 generate && npm run migrate && nodemon --exec babel-node -e js,graphql src/index.js",
     "serve": "npm run migrate && node dist/index.js",
-    "test": "prisma generate && jest",
+    "test": "npx prisma2 generate && jest",
     "coverage": "jest --coverage",
-    "lint": "prisma generate && eslint src --ignore-pattern src/lib/generated --ext .js --ext .graphql",
-    "token": "prisma token",
+    "lint": "npx prisma2 generate && eslint src --ignore-pattern src/lib/generated --ext .js --ext .graphql",
     "playground": "graphql playground",
-    "migrate": "npm run knex-migrate && npm run prisma-deploy",
+    "migrate": "npm run knex-migrate && npx prisma2 lift up",
     "knex": "babel-node node_modules/.bin/knex",
     "knex-migrate": "npm run knex migrate:latest",
-    "prisma-deploy": "prisma deploy --force",
-    "cleanup-deployments": "prisma generate && babel-node src/scripts/cleanup-deployments/index.js",
-    "upgrade-deployments": "prisma generate && babel-node src/scripts/upgrade-deployments/index.js",
-    "expire-deployments": "prisma generate && babel-node src/scripts/expire-deployments/index.js",
-    "check-platfrom-updates": "prisma generate && babel-node src/scripts/check-platform-updates/index.js"
+    "cleanup-deployments": "npx prisma2 generate && babel-node src/scripts/cleanup-deployments/index.js",
+    "upgrade-deployments": "npx prisma2 generate && babel-node src/scripts/upgrade-deployments/index.js",
+    "expire-deployments": "npx prisma2 generate && babel-node src/scripts/expire-deployments/index.js",
+    "check-platfrom-updates": "npx prisma2 generate && babel-node src/scripts/check-platform-updates/index.js"
   },
   "author": "Astronomer",
   "license": "Astronomer Enterprise License",
   "dependencies": {
     "@babel/polyfill": "^7.0.0",
+    "@prisma/client": "^2.0.0-preview017",
     "analytics-node": "^3.4.0-beta.1",
     "apollo-server": "^2.2.2",
     "apollo-server-express": "^2.2.2",
@@ -94,6 +93,7 @@
     "jest": "^24.8.0",
     "nock": "^11.6.0",
     "nodemon": "^1.18.7",
+    "prisma2": "^2.0.0-preview017",
     "supertest": "^4.0.2"
   }
 }
