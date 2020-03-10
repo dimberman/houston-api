@@ -224,10 +224,11 @@ export function releaseNameFromImage(image) {
  * @param {String} code The error code
  * @param {String} message The error message
  */
-export function sendError(res, code, message, http_err) {
+export function sendError(res, code, message, http_err, headers) {
   return res
     .status(http_err || 401)
     .set("Content-Type", "application/json")
+    .set(headers || {})
     .end(
       JSON.stringify({
         errors: [
