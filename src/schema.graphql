@@ -479,12 +479,12 @@ type Mutation {
     workspaceUuid: Uuid!
     email: String!
     role: Role!
-  ): Role @auth(permissions: ["workspace.iam.update"])
+  ): Role @auth(permissions: ["workspace.iam.update", "system.iam.update"], op: OR)
 
   workspaceRemoveUser(
     workspaceUuid: Uuid!
     userUuid: Uuid!
-  ): Workspace @auth(permissions: ["workspace.iam.update"])
+  ): Workspace @auth(permissions: ["workspace.iam.update", "system.iam.update"], op: OR)
 
   deleteInviteToken(
     inviteUuid: Uuid
@@ -498,7 +498,7 @@ type Mutation {
   upgradeDeployment(
     deploymentUuid: Uuid!
     version: String!
-  ): Deployment @auth(permissions: ["deployment.config.update", "system.deployments.update"] op: OR)
+  ): Deployment @auth(permissions: ["deployment.config.update", "system.deployments.update"], op: OR)
 
   # ServiceAccount mutations are handled differently at the moment to maintain
   # backward compatibility with CLI / UI. We should refactor to
