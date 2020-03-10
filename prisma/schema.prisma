@@ -1,0 +1,143 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = "postgresql://postgres:postgres@localhost:5432/postgres?schema=houston%24default"
+}
+
+model Deployment {
+  id                    String        @default(cuid()) @id
+  airflowVersion        String?
+  alertEmails           String[]
+  canary                Boolean?
+  config                String?
+  createdAt             DateTime      @default(now())
+  deletedAt             DateTime?
+  description           String?
+  dockerImage           DockerImage[]
+  elasticsearchPassword String?
+  extraAu               Int?
+  label                 String?
+  registryPassword      String?
+  releaseName           String?       @unique
+  roleBinding           RoleBinding[]
+  updatedAt             DateTime      @updatedAt
+  version               String?
+  workspace             Workspace?
+}
+
+model DockerImage {
+  id         String      @default(cuid()) @id
+  createdAt  DateTime    @default(now())
+  deployment Deployment?
+  digest     String
+  env        String
+  labels     String
+  name       String?     @unique
+  tag        String
+}
+
+model Email {
+  id        String   @default(cuid()) @id
+  address   String?  @unique
+  createdAt DateTime @default(now())
+  primary   Boolean?
+  token     String?  @unique
+  updatedAt DateTime @updatedAt
+  user      User?
+  verified  Boolean?
+}
+
+model InviteToken {
+  id        String     @default(cuid()) @id
+  createdAt DateTime   @default(now())
+  email     String
+  role      String?
+  source    String
+  token     String     @unique
+  updatedAt DateTime   @updatedAt
+  workspace Workspace?
+}
+
+model LocalCredential {
+  id         String   @default(cuid()) @id
+  createdAt  DateTime @default(now())
+  password   String?
+  resetToken String?  @unique
+  updatedAt  DateTime @updatedAt
+  user       User[]
+}
+
+model OAuthCredential {
+  id            String    @default(cuid()) @id
+  createdAt     DateTime  @default(now())
+  expiresAt     DateTime?
+  oauthProvider String
+  oauthUserId   String
+  updatedAt     DateTime  @updatedAt
+  user          User?
+}
+
+model PlatformRelease {
+  id          String   @default(cuid()) @id
+  createdAt   DateTime @default(now())
+  description String?
+  level       String?
+  releaseDate DateTime
+  updatedAt   DateTime @updatedAt
+  url         String?
+  version     String?  @unique
+}
+
+model RoleBinding {
+  id             String          @default(cuid()) @id
+  createdAt      DateTime        @default(now())
+  deployment     Deployment?
+  role           String?
+  serviceAccount ServiceAccount?
+  updatedAt      DateTime        @updatedAt
+  user           User?
+  workspace      Workspace?
+}
+
+model ServiceAccount {
+  id          String        @default(cuid()) @id
+  active      Boolean?
+  apiKey      String?       @unique
+  category    String?
+  createdAt   DateTime      @default(now())
+  label       String?
+  lastUsedAt  DateTime?
+  roleBinding RoleBinding[]
+  updatedAt   DateTime      @updatedAt
+}
+
+model User {
+  id              String            @default(cuid()) @id
+  avatarUrl       String?
+  createdAt       DateTime          @default(now())
+  email           Email[]
+  fullName        String?
+  localCredential LocalCredential?
+  oAuthCredential OAuthCredential[]
+  roleBinding     RoleBinding[]
+  status          String?
+  updatedAt       DateTime          @updatedAt
+  username        String?           @unique
+}
+
+model Workspace {
+  id               String        @default(cuid()) @id
+  createdAt        DateTime      @default(now())
+  deployment       Deployment[]
+  description      String?
+  inviteToken      InviteToken[]
+  isSuspended      Boolean?
+  label            String?
+  roleBinding      RoleBinding[]
+  stripeCustomerId String?
+  trialEndsAt      DateTime?
+  updatedAt        DateTime      @updatedAt
+}
