@@ -336,7 +336,7 @@ roles:
 # Airflow Deployment Configurations
 #
 deployments:
-
+  subdomain: 'deployments'
   # Airflow chart settings
   # Static helm configurations for this chart are found below.
   chart:

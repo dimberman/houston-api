@@ -55,6 +55,47 @@ export function ui() {
 }
 
 /*
+ * Return deployment subdomain
+ * @return {String} The deployment subdomain.
+ */
+export function deploymentsSubdomain() {
+  const baseDomain = config.get("helm.baseDomain");
+  const { subdomain } = config.get("deployments.subdomain");
+  return `${subdomain}.${baseDomain}`;
+}
+
+/*
+ * Return flower subdomain
+ * @return {String} The flower subdomain.
+ */
+export function flowerSubdomain() {
+  const baseDomain = config.get("helm.baseDomain");
+  const releaseName = config.get("helm.releaseName");
+  return `${releaseName}-flower.${baseDomain}`;
+}
+
+/*
+ * Return airflow subdomain
+ * @return {String} The airflow subdomain.
+ */
+export function airflowSubdomain() {
+  const baseDomain = config.get("helm.baseDomain");
+  const releaseName = config.get("helm.releaseName");
+  return `${releaseName}-airflow.${baseDomain}`;
+}
+
+/*
+ * Return full deployment scheme/host.
+ * @return {String} The deployment url.
+ */
+export function deploymentsUrl() {
+  const isProd = process.env.NODE_ENV === "production";
+  const subdomain = deploymentsSubdomain();
+  const url = `${scheme()}://${subdomain}`;
+  return isProd ? url : `${url}`;
+}
+
+/*
  * Return full houston scheme/host.
  * @return {String} The houston url.
  */
